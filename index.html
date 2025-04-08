@@ -86,28 +86,35 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'fetch' })
     });
-    const data = await response.json();
-    console.log("Données reçues :", data);
-    
-    // Si data est un tableau, on récupère le premier élément
+    let data = await response.json();
+    console.log("Type de données reçues :", typeof data);
+    // Si data est une chaîne de caractères, on la parse en JSON
+    if (typeof data === "string") {
+      data = JSON.parse(data);
+    }
+    // Si la réponse est un tableau, on récupère le premier objet
     const dataObj = Array.isArray(data) ? data[0] : data;
+    console.log("Données après parsing :", dataObj);
     
-    // Supprimez les accolades du résumé
+    // Nettoyer le résumé : enlever les accolades éventuelles
     const resumeText = dataObj.resume ? dataObj.resume.replace(/[{}]/g, '') : "Résumé non trouvé.";
     document.getElementById('resume').textContent = resumeText;
     
-    // Traitement de gmailMessageId pour retirer les accolades éventuelles
+    // Extraction et nettoyage de l'ID du mail
     const mailId = dataObj.gmailMessageId ? dataObj.gmailMessageId.replace(/[{}]/g, '') : null;
     currentGmailId = mailId;
     document.getElementById('mailId').textContent = mailId || "Aucun ID pour l’instant...";
     
-    // Affiche la zone d'actions
+    // Afficher la zone d'actions
     document.getElementById('actions').style.display = 'block';
   } catch (error) {
     console.error("Erreur :", error);
     document.getElementById('resume').textContent = "Erreur lors de la requête.";
   }
 });
+
+
+
 
 
 
