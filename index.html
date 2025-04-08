@@ -4,16 +4,25 @@
   <meta charset="UTF-8">
   <title>Interface Mail Assistant</title>
   <style>
+    /* Définition de l'image de fond */
     body {
       font-family: Arial, sans-serif;
       margin: 20px;
+      /* Image de fond */
+      background-image: url('background.jpg'); /* Place ton fichier background.jpg dans le même dossier ou adapte le chemin */
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      /* Optionnel : couleur de fond avec un léger overlay pour améliorer la lisibilité */
+      background-color: rgba(255, 255, 255, 0.8);
+      background-blend-mode: lighten;
     }
+
     pre {
       white-space: pre-wrap;
       border: 1px solid #ccc;
       padding: 10px;
       background-color: #f9f9f9;
-      /* Modification : changer la police en Arial */
       font-family: Arial, sans-serif;
       font-size: 16px;
       color: #333;
@@ -62,9 +71,8 @@
         const data = await response.json();
         console.log("Données reçues :", data);
         document.getElementById('resume').textContent = data.resume || "Résumé non trouvé.";
-        // Stocker l'ID du mail si fourni (optionnel)
         currentGmailId = data.gmailMessageId || null;
-        // Pour ce test, afficher toujours la zone d'actions
+        // Pour ce test, afficher toujours la zone d'action
         document.getElementById('actions').style.display = 'block';
       } catch (error) {
         console.error("Erreur :", error);
