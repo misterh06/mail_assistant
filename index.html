@@ -83,29 +83,26 @@
     const data = await response.json();
     console.log("Données reçues :", data);
     
-    // Si data est retourné sous forme de tableau, on extrait le premier élément.
+    // Si data est un tableau, on récupère le premier élément
     const dataObj = Array.isArray(data) ? data[0] : data;
     
-    // Mise à jour de l'affichage du résumé.
-    document.getElementById('resume').textContent = dataObj.resume || "Résumé non trouvé.";
+    // Supprimez les accolades du résumé
+    const resumeText = dataObj.resume ? dataObj.resume.replace(/[{}]/g, '') : "Résumé non trouvé.";
+    document.getElementById('resume').textContent = resumeText;
     
-    // Log pour vérifier que l'ID est bien récupéré.
-    console.log("Gmail ID :", dataObj.gmailMessageId);
-    
-    // Extraction et nettoyage de l'ID (par exemple, enlever les accolades si présentes).
+    // Traitement de gmailMessageId pour retirer les accolades éventuelles
     const mailId = dataObj.gmailMessageId ? dataObj.gmailMessageId.replace(/[{}]/g, '') : null;
-    
-    // Stocker l'ID et l'afficher dans la zone prévue.
     currentGmailId = mailId;
     document.getElementById('mailId').textContent = mailId || "Aucun ID pour l’instant...";
     
-    // Afficher la zone d'actions
+    // Affiche la zone d'actions
     document.getElementById('actions').style.display = 'block';
   } catch (error) {
     console.error("Erreur :", error);
     document.getElementById('resume').textContent = "Erreur lors de la requête.";
   }
 });
+
 
 
 
