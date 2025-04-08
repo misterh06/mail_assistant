@@ -6,23 +6,13 @@
   <style>
     /* Style de base pour le body */
     body {
-font-family: Arial, sans-serif;
-margin: 20px;
-background-image: url('images/imagebackground.jpeg');
-background-size: cover;
-background-position: center;
-background-repeat: no-repeat;
-position: relative; /* Important pour positionner le pseudo-élément par rapport au body */
-}
-body::before {
-content: "";
-position: fixed; /* Pour couvrir toute la fenêtre, même si le contenu scrolle /
-top: 0;
-left: 0;
-width: 100%;
-height: 100%;
-background-color: rgba(255, 255, 255, 0.7); / Blanc avec 70% d'opacité /
-z-index: -1; / Pour que le pseudo-élément soit derrière le contenu du body */
+  font-family: Arial, sans-serif;
+  margin: 20px;
+  /* Utilisation d'une image de fond dans le dossier images/ */
+  background-image: url('images/imagebackground.jpeg');
+  background-size: contain; /* Remplacer 'cover' par 'contain' pour afficher l'image en entier */
+  background-position: center;
+  background-repeat: no-repeat;
 }
     /* Style pour la zone de résumé */
     pre {
