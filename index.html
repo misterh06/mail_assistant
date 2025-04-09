@@ -6,20 +6,20 @@
   <style>
     /* Style de base pour le body */
     html, body {
-  margin: 0;
-  padding: 0;
-  min-height: 100vh; /* Assure que le body occupe toute la hauteur de la fenêtre */
-}
+      margin: 0;
+      padding: 0;
+      min-height: 100vh; /* Assure que le body occupe toute la hauteur de la fenêtre */
+    }
 
     body {
-  font-family: Arial, sans-serif;
-  margin: 20px;
-  /* Utilisation d'une image de fond dans le dossier images/ */
-  background-image: url('images/imagebackground.jpeg');
-  background-size: cover; /* Remplacer 'cover' par 'contain' pour afficher l'image en entier */
-  background-position: center;
-  background-repeat: no-repeat;
-}
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      /* Utilisation d'une image de fond dans le dossier images/ */
+      background-image: url('images/imagebackground.jpeg');
+      background-size: cover; /* Remplacer 'cover' par 'contain' pour afficher l'image en entier */
+      background-position: center;
+      background-repeat: no-repeat;
+    }
     /* Style pour la zone de résumé */
     pre {
       white-space: pre-wrap;
@@ -49,11 +49,38 @@
     button:hover {
       background-color: #0069d9;
     }
+    button:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+    }
     /* Zone pour les boutons d'action, initialement masquée */
     #actions {
       display: none;
       margin-top: 20px;
     }
+    /* Zone pour l'édition, initialement masquée */
+    #edit-section {
+        display: none;
+        margin-top: 20px;
+        border: 1px solid #007BFF;
+        padding: 15px;
+        border-radius: 10px;
+        background-color: rgba(230, 240, 255, 0.95);
+    }
+    #edit-section textarea {
+        width: 98%;
+        margin-bottom: 10px;
+        padding: 5px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }
+    #edit-section button#cancel-edit-btn {
+        background-color: #6c757d;
+    }
+     #edit-section button#cancel-edit-btn:hover {
+        background-color: #5a6268;
+    }
+
   </style>
 </head>
 <body>
@@ -65,7 +92,7 @@
   <h2>Résumé :</h2>
   <pre id="resume">Aucun résumé pour l’instant…</pre>
   <h2>ID du mail :</h2>
-<pre id="mailId">Aucun ID pour l’instant…</pre>
+  <pre id="mailId">Aucun ID pour l’instant…</pre>
 
   <!-- Zone pour les boutons d'action -->
   <div id="actions">
@@ -74,104 +101,109 @@
     <button id="delete-btn">Supprimer</button>
     <button id="ignore-btn">Ignorer</button>
   </div>
+
   <!-- Zone pour l'édition de la réponse (initialement masquée) -->
-<div id="edit-section" style="display: none; margin-top: 20px; border: 1px solid #007BFF; padding: 15px; border-radius: 10px; background-color: rgba(230, 240, 255, 0.95);">
-  <h3>Éditer et Envoyer la Réponse</h3>
-  <p><strong>Destinataire :</strong> <span id="edit-recipient"></span></p>
-  <p><strong>Sujet Original :</strong> <span id="edit-subject"></span></p>
-  <textarea id="edit-reply-text" rows="10" style="width: 98%; margin-bottom: 10px;" placeholder="Éditez la réponse ici..."></textarea>
-  <button id="confirm-send-btn">Envoyer la réponse modifiée</button>
-  <button id="cancel-edit-btn" style="background-color: #6c757d;">Annuler</button>
-  <!-- Stockage caché des IDs -->
-  <input type="hidden" id="edit-gmailId">
-  <input type="hidden" id="edit-airtableId">
-</div>
+  <div id="edit-section">
+    <h3>Éditer et Envoyer la Réponse</h3>
+    <p><strong>Destinataire :</strong> <span id="edit-recipient"></span></p>
+    <p><strong>Sujet Original :</strong> <span id="edit-subject"></span></p>
+    <textarea id="edit-reply-text" rows="10" placeholder="Éditez la réponse ici..."></textarea>
+    <button id="confirm-send-btn">Envoyer la réponse modifiée</button>
+    <button id="cancel-edit-btn">Annuler</button>
+    <!-- Stockage caché des IDs -->
+    <input type="hidden" id="edit-gmailId">
+    <input type="hidden" id="edit-airtableId">
+  </div>
 
   <script>
+    // !! IMPORTANT : Remplacez ceci par l'URL de votre DEUXIÈME webhook n8n (celui qui envoie l'email final) !!
     const sendWebhookUrl = 'https://misterh06.app.n8n.cloud/webhook/send-final-reply';
-    // Variable pour stocker l'ID du mail récupéré (provenant de n8n)
+    // Variable globale pour stocker l'ID du mail récupéré
     let currentGmailId = null;
 
-  // --- Nouveaux Event Listeners pour la section d'édition ---
+    // ----- CODE POUR LE BOUTON "Obtenir le résumé" -----
+    document.getElementById('get-summary').addEventListener('click', async () => {
+      // Mettre un indicateur de chargement
+      document.body.style.cursor = 'wait';
+      document.getElementById('get-summary').disabled = true;
+       // Cacher les sections d'action ou d'édition si elles sont visibles
+       document.getElementById('actions').style.display = 'none';
+       document.getElementById('edit-section').style.display = 'none';
+       // Afficher "Chargement..."
+       document.getElementById('resume').textContent = "Chargement du résumé...";
+       document.getElementById('mailId').textContent = "Chargement de l'ID...";
+       currentGmailId = null; // Réinitialiser l'ID
 
-document.getElementById('confirm-send-btn').addEventListener('click', async () => {
-  // Récupérer les données nécessaires depuis la section d'édition
-  const editedReply = document.getElementById('edit-reply-text').value;
-  const recipientEmail = document.getElementById('edit-recipient').textContent;
-  const originalSubject = document.getElementById('edit-subject').textContent;
-  const gmailId = document.getElementById('edit-gmailId').value;
-  const airtableId = document.getElementById('edit-airtableId').value;
+      try {
+        // Appel au PREMIER webhook n8n (celui qui génère le résumé)
+        const response = await fetch('https://misterh06.app.n8n.cloud/webhook/e55fe17f-6985-4fb3-98f6-68beab2ed656', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'fetch' }) // Adapter si votre webhook attend autre chose
+        });
 
-  if (!editedReply || !recipientEmail || !originalSubject || !gmailId || !airtableId) {
-    alert("Erreur : Toutes les informations nécessaires ne sont pas présentes pour l'envoi.");
-    return;
-  }
+        if (!response.ok) {
+           throw new Error(`Erreur HTTP ${response.status}`);
+        }
 
-  // Afficher un indicateur de chargement
-  document.body.style.cursor = 'wait';
-  document.getElementById('confirm-send-btn').disabled = true;
-  document.getElementById('cancel-edit-btn').disabled = true;
+        let data = await response.json();
+        console.log("Type de données reçues (Résumé) :", typeof data);
+        // Gérer si la réponse est une chaîne JSON
+        if (typeof data === "string") {
+           try {
+               data = JSON.parse(data);
+           } catch(e) {
+               console.error("Impossible de parser la réponse en JSON:", data);
+               throw new Error("Réponse du serveur invalide (non-JSON).");
+           }
+        }
 
-  try {
-    // Appeler le NOUVEAU webhook d'envoi
-    const response = await fetch(sendWebhookUrl, { // Utilise l'URL du nouveau webhook
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        editedReply: editedReply,
-        recipientEmail: recipientEmail,
-        originalSubject: originalSubject,
-        gmailId: gmailId,
-        airtableId: airtableId
-      })
+        // Gérer si la réponse est un tableau ou un objet
+        const dataObj = Array.isArray(data) ? data[0] : data;
+        console.log("Données Résumé après parsing :", dataObj);
+
+        // Vérifier si dataObj est un objet valide
+        if (typeof dataObj !== 'object' || dataObj === null) {
+             console.error("Les données reçues ne sont pas un objet valide:", dataObj);
+             throw new Error("Format de réponse inattendu.");
+        }
+
+        // Afficher le résumé (nettoyé des accolades)
+        const resumeText = dataObj.resume ? String(dataObj.resume).replace(/[{}]/g, '') : "Résumé non trouvé.";
+        document.getElementById('resume').textContent = resumeText;
+
+        // Afficher l'ID Gmail (nettoyé)
+        const mailId = dataObj.gmailMessageId ? String(dataObj.gmailMessageId).replace(/[{}]/g, '') : null;
+        currentGmailId = mailId; // Stocker l'ID pour les actions futures
+        document.getElementById('mailId').textContent = mailId || "Aucun ID pour l’instant...";
+
+        // Afficher les boutons d'action si un ID a été trouvé
+        if (currentGmailId) {
+            document.getElementById('actions').style.display = 'block';
+            // S'assurer que les boutons d'action sont réactivés
+            document.getElementById('reply-btn').disabled = false;
+            document.getElementById('delete-btn').disabled = false;
+            document.getElementById('ignore-btn').disabled = false;
+        } else {
+             document.getElementById('actions').style.display = 'none';
+        }
+
+      } catch (error) {
+        console.error("Erreur lors de la récupération du résumé:", error);
+        document.getElementById('resume').textContent = "Erreur lors de la requête: " + error.message;
+        document.getElementById('mailId').textContent = "Erreur";
+         document.getElementById('actions').style.display = 'none'; // Cacher actions en cas d'erreur
+      } finally {
+          // Remettre l'interface à la normale
+          document.body.style.cursor = 'default';
+          document.getElementById('get-summary').disabled = false;
+      }
     });
-
-    const result = await response.json();
-    console.log("Réponse du webhook d'envoi final :", result);
-
-    // Afficher la confirmation
-    const messageToShow = result.message || JSON.stringify(result);
-    alert("Envoi final terminé. Résultat : " + messageToShow);
-
-    // Cacher la section d'édition et réinitialiser (par exemple, réafficher les actions)
-    document.getElementById('edit-section').style.display = 'none';
-    // Optionnel: Réafficher les actions si pertinent, ou juste laisser vide.
-    // document.getElementById('actions').style.display = 'block';
-    // Optionnel: Effacer le résumé et l'ID affichés ?
-    // document.getElementById('resume').textContent = "Aucun résumé pour l’instant…";
-    // document.getElementById('mailId').textContent = "Aucun ID pour l’instant…";
-    // currentGmailId = null;
+    // ----- FIN DU CODE POUR "Obtenir le résumé" -----
 
 
-  } catch (error) {
-    console.error("Erreur lors de l'envoi final :", error);
-    alert("Échec de l'envoi final. Vérifiez la console.");
-  } finally {
-    // Toujours remettre l'interface à la normale
-    document.body.style.cursor = 'default';
-     // Réactiver les boutons si nécessaire, dépend de la réinitialisation souhaitée
-     document.getElementById('confirm-send-btn').disabled = false;
-     document.getElementById('cancel-edit-btn').disabled = false;
-  }
-});
-
-document.getElementById('cancel-edit-btn').addEventListener('click', () => {
-  // Cacher la section d'édition
-  document.getElementById('edit-section').style.display = 'none';
-  // Réafficher les actions initiales
-  document.getElementById('actions').style.display = 'block';
-   // S'assurer que le bouton reply est réactivé s'il avait été désactivé
-   const replyButton = document.getElementById('reply-btn');
-   if(replyButton) replyButton.disabled = false;
-});
-
-
-
-
-
-
-        // ----- DÉBUT DE LA FONCTION MODIFIÉE -----
-        async function envoyerAction(command) {
+    // ----- Fonction pour envoyer les actions initiales (DELETE, IGNORE, REPLY-suggestion) -----
+    async function envoyerAction(command) {
       if (!currentGmailId) {
         alert("Aucun ID de mail disponible.");
         return;
@@ -187,6 +219,7 @@ document.getElementById('cancel-edit-btn').addEventListener('click', () => {
       if(targetButton) targetButton.disabled = true;
 
       try {
+        // Appel au DEUXIÈME webhook n8n (celui qui gère les actions)
         const response = await fetch('https://misterh06.app.n8n.cloud/webhook/3251383a-01dc-495b-bf2c-ebe6b9de960e', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -196,13 +229,13 @@ document.getElementById('cancel-edit-btn').addEventListener('click', () => {
           })
         });
 
-        // Essayer de toujours parser comme JSON
+        // Essayer de toujours parser comme JSON car n8n doit répondre en JSON
         const result = await response.json();
-        console.log("Réponse reçue pour", command, ":", result);
+        console.log("Réponse reçue pour action", command, ":", result);
 
-        // ----- NOUVELLE LOGIQUE ICI -----
+        // --- Logique spécifique à la réponse ---
         if (command === 'REPLY' && result.status === 'suggestion_ready') {
-          // CAS 1: C'est une suggestion de réponse, on affiche l'éditeur
+          // CAS 1: C'est une suggestion de réponse valide, on affiche l'éditeur
 
           console.log("Suggestion reçue, préparation de l'éditeur.");
 
@@ -210,7 +243,6 @@ document.getElementById('cancel-edit-btn').addEventListener('click', () => {
           document.getElementById('actions').style.display = 'none';
 
           // Remplir les champs de la section d'édition avec les données reçues de n8n
-          // Assure-toi que les IDs dans getElementById correspondent bien à ton HTML
           document.getElementById('edit-recipient').textContent = result.recipientEmail || 'Non trouvé';
           document.getElementById('edit-subject').textContent = result.originalSubject || 'Non trouvé';
           document.getElementById('edit-reply-text').value = result.suggestedReply || ''; // Utilise .value pour textarea
@@ -222,16 +254,12 @@ document.getElementById('cancel-edit-btn').addEventListener('click', () => {
 
           // Remettre le curseur à la normale (car on reste sur la page)
           document.body.style.cursor = 'default';
-          // Le bouton 'Répondre' (targetButton) reste désactivé pour l'instant,
-          // l'utilisateur interagira avec les boutons de la section d'édition.
-
-          // Pas besoin de 'return;' ici si on veut que la suite (rien pour l'instant) s'exécute
+          // Le bouton 'Répondre' (targetButton) reste désactivé, l'utilisateur utilisera les nouveaux boutons.
 
         } else {
           // CAS 2: Pour DELETE, IGNORE, ou si REPLY n'a pas renvoyé une suggestion valide
 
-          // Affiche le message venant de n8n (qui devrait être dans result.message)
-          const messageToShow = result.message || JSON.stringify(result); // Prend le message si dispo, sinon tout l'objet
+          const messageToShow = result.message || JSON.stringify(result);
           alert("Action '" + command + "' terminée. Résultat : " + messageToShow);
 
           // Remettre le curseur et réactiver le bouton SEULEMENT pour DELETE/IGNORE
@@ -239,12 +267,20 @@ document.getElementById('cancel-edit-btn').addEventListener('click', () => {
                document.body.style.cursor = 'default';
                if(targetButton) targetButton.disabled = false;
            } else {
-               // Si c'était REPLY mais sans suggestion, on remet juste le curseur
-               // mais on laisse le bouton 'Répondre' désactivé pour éviter confusion.
+               // Si c'était REPLY mais sans suggestion valide, on remet juste le curseur
+               // mais on laisse le bouton 'Répondre' désactivé.
                document.body.style.cursor = 'default';
            }
+
+           // Après une action DELETE ou IGNORE réussie, on réinitialise l'interface
+           if ((command === 'DELETE' || command === 'IGNORE') && result.status === 'success') { // Vérifie si l'action a réussi
+                document.getElementById('resume').textContent = "Aucun résumé pour l’instant…";
+                document.getElementById('mailId').textContent = "Aucun ID pour l’instant…";
+                document.getElementById('actions').style.display = 'none';
+                currentGmailId = null;
+           }
         }
-        // ----- FIN DE LA NOUVELLE LOGIQUE -----
+        // --- Fin de la logique spécifique ---
 
       } catch (error) {
         console.error("Erreur lors de l'envoi de l'action :", error);
@@ -254,12 +290,95 @@ document.getElementById('cancel-edit-btn').addEventListener('click', () => {
         if(targetButton) targetButton.disabled = false;
       }
     }
-    // ----- FIN DE LA FONCTION MODIFIÉE -----
+    // ----- FIN DE LA FONCTION envoyerAction -----
 
-    // Attacher les événements aux boutons d'action
+
+    // ----- Event Listeners pour la section d'édition -----
+    document.getElementById('confirm-send-btn').addEventListener('click', async () => {
+      // Récupérer les données nécessaires depuis la section d'édition
+      const editedReply = document.getElementById('edit-reply-text').value;
+      const recipientEmail = document.getElementById('edit-recipient').textContent;
+      const originalSubject = document.getElementById('edit-subject').textContent;
+      const gmailId = document.getElementById('edit-gmailId').value;
+      const airtableId = document.getElementById('edit-airtableId').value;
+
+      if (!editedReply || !recipientEmail || !originalSubject || !gmailId || !airtableId) {
+        alert("Erreur : Toutes les informations nécessaires ne sont pas présentes pour l'envoi.");
+        return;
+      }
+
+      // Afficher un indicateur de chargement
+      document.body.style.cursor = 'wait';
+      document.getElementById('confirm-send-btn').disabled = true;
+      document.getElementById('cancel-edit-btn').disabled = true;
+
+      try {
+        // Appel au TROISIÈME webhook n8n (celui qui envoie l'email final)
+        const response = await fetch(sendWebhookUrl, { // Utilise l'URL définie en haut du script
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            editedReply: editedReply,
+            recipientEmail: recipientEmail,
+            originalSubject: originalSubject,
+            gmailId: gmailId,
+            airtableId: airtableId
+          })
+        });
+
+        const result = await response.json();
+        console.log("Réponse du webhook d'envoi final :", result);
+
+        // Afficher la confirmation
+        const messageToShow = result.message || JSON.stringify(result);
+        alert("Envoi final terminé. Résultat : " + messageToShow);
+
+        // Cacher la section d'édition et réinitialiser l'affichage principal
+        document.getElementById('edit-section').style.display = 'none';
+        document.getElementById('resume').textContent = "Aucun résumé pour l’instant…"; // Réinitialise
+        document.getElementById('mailId').textContent = "Aucun ID pour l’instant…"; // Réinitialise
+        currentGmailId = null; // Oublie l'ID traité
+
+      } catch (error) {
+        console.error("Erreur lors de l'envoi final :", error);
+        alert("Échec de l'envoi final. Vérifiez la console.");
+      } finally {
+        // Toujours remettre l'interface à la normale
+        document.body.style.cursor = 'default';
+         // Réactiver les boutons d'édition (au cas où l'utilisateur voudrait annuler/réessayer ?)
+         // Ou peut-être les laisser désactivés car l'état est maintenant réinitialisé.
+         document.getElementById('confirm-send-btn').disabled = false;
+         document.getElementById('cancel-edit-btn').disabled = false;
+         // Le bouton get-summary est déjà réactivé dans son propre listener
+      }
+    });
+
+    document.getElementById('cancel-edit-btn').addEventListener('click', () => {
+      // Cacher la section d'édition
+      document.getElementById('edit-section').style.display = 'none';
+      // Réafficher les actions initiales (si un ID est toujours chargé)
+      if (currentGmailId) {
+          document.getElementById('actions').style.display = 'block';
+          // S'assurer que le bouton reply est réactivé s'il avait été désactivé pendant l'attente
+          const replyButton = document.getElementById('reply-btn');
+          if(replyButton) replyButton.disabled = false;
+          // Réactiver aussi delete/ignore au cas où
+          const deleteButton = document.getElementById('delete-btn');
+          if(deleteButton) deleteButton.disabled = false;
+          const ignoreButton = document.getElementById('ignore-btn');
+          if(ignoreButton) ignoreButton.disabled = false;
+
+      }
+    });
+    // ----- FIN des Event Listeners pour l'édition ---
+
+
+    // ----- Attacher les événements aux boutons d'action initiaux -----
     document.getElementById('reply-btn').addEventListener('click', () => envoyerAction('REPLY'));
     document.getElementById('delete-btn').addEventListener('click', () => envoyerAction('DELETE'));
     document.getElementById('ignore-btn').addEventListener('click', () => envoyerAction('IGNORE'));
+    // ----- FIN des attachements initiaux -----
+
   </script>
 </body>
 </html>
