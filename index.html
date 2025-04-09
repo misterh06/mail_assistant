@@ -233,6 +233,11 @@
         const result = await response.json();
         console.log("Réponse reçue pour action", command, ":", result);
 
+        console.log("Vérification de la condition : ");
+console.log("command:", command); // Doit être 'REPLY'
+console.log("result.status:", result.status); // Vérifie la valeur exacte et le type
+console.log("Comparaison (result.status === 'suggestion_ready'):", result.status === 'suggestion_ready'); // Doit être true
+
         // --- Logique spécifique à la réponse ---
         if (command === 'REPLY' && result.status === 'suggestion_ready') {
           // CAS 1: C'est une suggestion de réponse valide, on affiche l'éditeur
